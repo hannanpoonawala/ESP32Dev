@@ -4,18 +4,12 @@
 #include <Arduino.h>
 #include <FS.h>
 #include <functional>
-using fs::FS;  // <--- This line is the "bridge" fix for Core 3.x
+using fs::FS; // Critical fix for ESP32 Core 3.x
 
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
 #include <esp_wifi.h>
-
-struct PacketInfo {
-    int8_t rssi;
-    uint16_t length;
-    int channel;
-};
 
 class WiFiHandler {
 public:
@@ -35,8 +29,6 @@ private:
     WebServer server;
     DNSServer dnsServer;
     bool portalRunning = false;
-    bool snifferRunning = false;
-    bool spammerRunning = false;
 };
 
 #endif
