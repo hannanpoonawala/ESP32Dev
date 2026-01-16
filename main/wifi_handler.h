@@ -2,33 +2,87 @@
 #define WIFI_HANDLER_H
 
 #include <Arduino.h>
-#include <FS.h>
-#include <functional>
-using fs::FS; // Critical fix for ESP32 Core 3.x
-
 #include <WiFi.h>
-#include <WebServer.h>
-#include <DNSServer.h>
 #include <esp_wifi.h>
+#include "shared_types.h"
+
+#define MAX_NETWORKS 20
+#define WATERFALL_BUFFER_SIZE 80
+#define SPAM_SSID_COUNT 10
 
 class WiFiHandler {
 public:
     WiFiHandler();
-    void startSniffer(int channel);
-    void getLatestStats(int &rssi, uint32_t &count);
-    void startBeaconSpammer(const char* ssid);
-    void startCaptivePortal(const char* apName);
-    void handlePortal();
-    void stopAll();
+    
+    // Lifecycle management
+    void begin();
+    void stop();
+    bool isRunning() const { return running; }
+    ModuleState getState() const { return moduleState; }
+    
+    // ===== SNIFFER MODE =====
+    void startSniffer();
+    void stopSniffer();
+    WiFiStats getStats();
+    void resetStats();
+    void setChannel(int ch);
+    int getChannel() const { return currentChannel; }
+    
+    // Waterfall data access
+    int getWaterfallData(int8_t* buffer, int maxSize);
+    
+    // ===== SCANNER MODE =====
+    void startScan();
+    int getNetworkCount() const { return networkCount; }
+    WiFiNetwork* getNetworks() { return networks; }
+    const char* getAuthTypeName(uint8_t authType);
+    
+    // ===== BEACON SPAMMER =====
+    void startSpammer();
+    void stopSpammer();
+    bool isSpamming() const { return moduleState == STATE_SPAMMING; }
 
 private:
+    // Task functions
+    static void snifferTask(void* pvParameters);
+    static void spammerTask(void* pvParameters);
     static void snifferCallback(void* buf, wifi_promiscuous_pkt_type_t type);
-    static int8_t lastRssi;
-    static uint32_t packetCount;
     
-    WebServer server;
-    DNSServer dnsServer;
-    bool portalRunning = false;
+    // Task handles
+    TaskHandle_t snifferTaskHandle;
+    TaskHandle_t spammerTaskHandle;
+    
+    // Queue for packet data
+    static QueueHandle_t dataQueue;
+    
+    // Mutex for thread-safe access
+    static SemaphoreHandle_t statsMutex;
+    static SemaphoreHandle_t waterfallMutex;
+    static SemaphoreHandle_t networkMutex;
+    
+    // Sniffer statistics (protected by mutex)
+    static WiFiStats stats;
+    static int currentChannel;
+    
+    // Waterfall buffer (circular)
+    static int8_t waterfallBuffer[WATERFALL_BUFFER_SIZE];
+    static int waterfallIndex;
+    
+    // Scanner data
+    WiFiNetwork networks[MAX_NETWORKS];
+    int networkCount;
+    
+    // Spammer SSIDs
+    static const char* spamSSIDs[SPAM_SSID_COUNT];
+    
+    // State
+    ModuleState moduleState;
+    volatile bool running;
+    
+    // Helper functions
+    void cleanupTasks();
+    uint8_t beaconPacket[128];
+    void createBeaconFrame(uint8_t* packet, const char* ssid, uint8_t channel);
 };
 
 #endif
