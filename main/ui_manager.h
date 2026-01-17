@@ -13,9 +13,10 @@
 #define FLIPPER_WHITE  0xFFFF
 #define FLIPPER_ORANGE 0xFD20
 #define FLIPPER_GRAY   0x7BEF
+#define FLIPPER_RED    0xF800
 #define BUTTON_HEIGHT  40
 #define BUTTON_GAP     5
-#define HEADER_HEIGHT  30
+#define HEADER_HEIGHT  25
 
 // UI Update timing
 #define UI_UPDATE_INTERVAL 50  // ms between updates
@@ -32,6 +33,7 @@ enum MenuState {
     PAGE_WATERFALL,
     PAGE_SCANNER,
     PAGE_SPAM,
+    PAGE_DEAUTH,
     
     // Other Pages
     PAGE_PORTAL,
@@ -75,6 +77,9 @@ private:
     // Spammer state
     bool spammerRunning = false;
     
+    // Deauth detector state
+    bool deauthRunning = false;
+    
     // Calibration data
     uint16_t calDataLand[5] = { 408, 3433, 290, 3447, 7 };
     uint16_t calDataPort[5] = { 423, 3274, 422, 3384, 4 };
@@ -102,12 +107,17 @@ private:
     void updateSpammerDisplay();
     void handleSpammerTouch();
     
+    void drawDeauthPage();
+    void updateDeauthDisplay();
+    void handleDeauthTouch();
+    
     // Helper functions
     void changeState(MenuState newState);
     bool shouldUpdateDisplay();
     uint16_t getRssiColor(int8_t rssi);
     void drawButton(int x, int y, int w, int h, const char* label, uint16_t color, bool pressed = false);
     void drawBorder(int x, int y, int w, int h, uint16_t color);
+    bool handleBackButton();
 };
 
 #endif

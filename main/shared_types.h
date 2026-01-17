@@ -47,7 +47,26 @@ enum ModuleState {
     STATE_SCANNING,
     STATE_SNIFFING,
     STATE_SPAMMING,
+    STATE_DEAUTH_DETECT,
     STATE_ERROR
+};
+
+// Deauth detection structures
+struct DeauthEvent {
+    char apMac[18];
+    char clientMac[18];
+    uint8_t reasonCode;
+    uint32_t timestamp;
+    int8_t rssi;
+};
+
+struct DeauthStats {
+    uint32_t totalDeauths;
+    uint32_t broadcastDeauths;
+    uint32_t suspiciousCount;
+    bool attackDetected;
+    char suspiciousAP[18];
+    uint32_t lastDetectionTime;
 };
 
 // UI Update flags (bitwise for efficiency)

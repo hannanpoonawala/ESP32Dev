@@ -41,24 +41,36 @@ public:
     void startSpammer();
     void stopSpammer();
     bool isSpamming() const { return moduleState == STATE_SPAMMING; }
+    const char** getSpamSSIDs() { return spamSSIDs; }
+    
+    // ===== DEAUTH DETECTOR =====
+    void startDeauthDetector();
+    void stopDeauthDetector();
+    DeauthStats getDeauthStats();
+    void resetDeauthStats();
 
 private:
     // Task functions
     static void snifferTask(void* pvParameters);
     static void spammerTask(void* pvParameters);
+    static void deauthDetectorTask(void* pvParameters);
     static void snifferCallback(void* buf, wifi_promiscuous_pkt_type_t type);
+    static void deauthCallback(void* buf, wifi_promiscuous_pkt_type_t type);
     
     // Task handles
     TaskHandle_t snifferTaskHandle;
     TaskHandle_t spammerTaskHandle;
+    TaskHandle_t deauthTaskHandle;
     
     // Queue for packet data
     static QueueHandle_t dataQueue;
+    static QueueHandle_t deauthQueue;
     
     // Mutex for thread-safe access
     static SemaphoreHandle_t statsMutex;
     static SemaphoreHandle_t waterfallMutex;
     static SemaphoreHandle_t networkMutex;
+    static SemaphoreHandle_t deauthMutex;
     
     // Sniffer statistics (protected by mutex)
     static WiFiStats stats;
@@ -74,6 +86,11 @@ private:
     
     // Spammer SSIDs
     static const char* spamSSIDs[SPAM_SSID_COUNT];
+    
+    // Deauth detection
+    static DeauthStats deauthStats;
+    static DeauthEvent deauthHistory[20];
+    static int deauthHistoryIndex;
     
     // State
     ModuleState moduleState;
