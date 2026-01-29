@@ -2,7 +2,8 @@
 #include "ui_manager.h"
 
 WiFiHandler wifiHandler;
-UIManager ui(wifiHandler);
+BTHandler btHandler;
+UIManager ui(wifiHandler, btHandler);
 
 void setup() {
     Serial.begin(115200);

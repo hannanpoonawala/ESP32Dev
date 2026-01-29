@@ -2,6 +2,7 @@
 #define UI_MANAGER_H
 
 #include "wifi_handler.h"
+#include "bt_handler.h"
 #include <TFT_eSPI.h>
 
 // Hardware Constants
@@ -34,6 +35,12 @@ enum MenuState {
     PAGE_SCANNER,
     PAGE_SPAM,
     PAGE_DEAUTH,
+
+    // Bluetooth Pages
+    PAGE_BT_SCANNER,
+    PAGE_BT_SPAM,
+    PAGE_BT_SKIMMER,
+    PAGE_BT_RSSI,
     
     // Other Pages
     PAGE_PORTAL,
@@ -49,12 +56,13 @@ struct MenuItem {
 
 class UIManager {
 public:
-    UIManager(WiFiHandler &wh);
+    UIManager(WiFiHandler &wh, BTHandler &bh);
     void begin();
     void update();
 
 private:
     WiFiHandler &wifi;
+    BTHandler &bt;
     TFT_eSPI tft;
     MenuState currentState = MENU_MAIN;
     MenuState previousState = MENU_MAIN;
@@ -79,6 +87,12 @@ private:
     
     // Deauth detector state
     bool deauthRunning = false;
+
+    // Bluetooth states
+    bool btScannerRunning = false;
+    bool btSpammerRunning = false;
+    bool btSkimmerRunning = false;
+    int btSelectedDevice = -1;
     
     // Calibration data
     uint16_t calDataLand[5] = { 408, 3433, 290, 3447, 7 };
@@ -110,6 +124,22 @@ private:
     void drawDeauthPage();
     void updateDeauthDisplay();
     void handleDeauthTouch();
+
+    void drawBTScannerPage();
+    void updateBTScannerDisplay();
+    void handleBTScannerTouch();
+    
+    void drawBTSpammerPage();
+    void updateBTSpammerDisplay();
+    void handleBTSpammerTouch();
+    
+    void drawBTSkimmerPage();
+    void updateBTSkimmerDisplay();
+    void handleBTSkimmerTouch();
+    
+    void drawBTRSSIPage();
+    void updateBTRSSIDisplay();
+    void handleBTRSSITouch();
     
     // Helper functions
     void changeState(MenuState newState);

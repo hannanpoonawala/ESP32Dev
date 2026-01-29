@@ -18,7 +18,10 @@ MenuItem wifiItems[] = {
 const int WIFI_COUNT = sizeof(wifiItems) / sizeof(MenuItem);
 
 MenuItem btItems[] = {
-    { "BT Sniffer", PAGE_BT_TEST }
+    { "BLE Scanner", PAGE_BT_SCANNER },
+    { "BLE Spammer", PAGE_BT_SPAM },
+    { "Tracker Detect", PAGE_BT_SKIMMER },
+    { "RSSI Monitor", PAGE_BT_RSSI }
 };
 const int BT_COUNT = sizeof(btItems) / sizeof(MenuItem);
 
@@ -34,8 +37,8 @@ MenuItem settingsItems[] = {
 };
 const int SETTINGS_COUNT = sizeof(settingsItems) / sizeof(MenuItem);
 
-UIManager::UIManager(WiFiHandler &wh) 
-    : wifi(wh), tft(TFT_eSPI()) {
+UIManager::UIManager(WiFiHandler &wh, BTHandler &bh) 
+    : wifi(wh), bt(bh), tft(TFT_eSPI()) {
     cachedStats = {-100, 0, 0, 0, 0, 1, false};
 }
 
@@ -49,6 +52,7 @@ void UIManager::begin() {
     tft.fillScreen(FLIPPER_BLACK);
     
     wifi.begin();
+    bt.begin();
     lastUpdate = millis();
 }
 
@@ -141,12 +145,41 @@ void UIManager::update() {
             handleListTouch(NULL, 0, MENU_WIFI);
             break;
         
-        case PAGE_BT_TEST:
-            if (stateChanged) { 
-                drawPlaceholderPage("BT Active", MENU_BLUETOOTH); 
-                stateChanged = false; 
+        // ===== Bluetooth Pages =====
+        case PAGE_BT_SCANNER:
+            if (stateChanged) {
+                drawBTScannerPage();
+                stateChanged = false;
             }
-            handleListTouch(NULL, 0, MENU_BLUETOOTH);
+            updateBTScannerDisplay();
+            handleBTScannerTouch();
+            break;
+            
+        case PAGE_BT_SPAM:
+            if (stateChanged) {
+                drawBTSpammerPage();
+                stateChanged = false;
+            }
+            updateBTSpammerDisplay();
+            handleBTSpammerTouch();
+            break;
+            
+        case PAGE_BT_SKIMMER:
+            if (stateChanged) {
+                drawBTSkimmerPage();
+                stateChanged = false;
+            }
+            updateBTSkimmerDisplay();
+            handleBTSkimmerTouch();
+            break;
+            
+        case PAGE_BT_RSSI:
+            if (stateChanged) {
+                drawBTRSSIPage();
+                stateChanged = false;
+            }
+            updateBTRSSIDisplay();
+            handleBTRSSITouch();
             break;
 
         case PAGE_RFID_SCAN:
@@ -178,6 +211,15 @@ void UIManager::changeState(MenuState newState) {
     } else if (currentState == PAGE_DEAUTH) {
         wifi.stopDeauthDetector();
         deauthRunning = false;
+    } else if (currentState == PAGE_BT_SCANNER) {
+        bt.stopScan();
+        btScannerRunning = false;
+    } else if (currentState == PAGE_BT_SPAM) {
+        bt.stopSpammer();
+        btSpammerRunning = false;
+    } else if (currentState == PAGE_BT_SKIMMER) {
+        bt.stopSkimmer();
+        btSkimmerRunning = false;
     }
     
     previousState = currentState;
@@ -295,7 +337,7 @@ void UIManager::drawWaterfallPage() {
     int graphY = HEADER_HEIGHT + 1;
     int graphH = tft.height() - HEADER_HEIGHT - 57;
     int dataY = graphY + graphH + 1;
-    drawBorder(0, graphY, tft.width(), graphH, FLIPPER_GRAY);
+    tft.drawRoundRect(0, graphY, tft.width(), graphH, 6, FLIPPER_GRAY);
     tft.drawRoundRect(0, dataY, tft.width(), 20, 6, FLIPPER_GREEN);
     
     // Draw Y-axis labels (RSSI scale)
@@ -429,7 +471,7 @@ void UIManager::drawScannerPage() {
     // Draw scanning message
     tft.setTextColor(FLIPPER_WHITE, FLIPPER_BLACK);
     tft.setTextDatum(MC_DATUM);
-    tft.drawString("Scanning...", tft.width()/2, tft.height()/2);
+    tft.drawString("Ready for Scanning", tft.width()/2, tft.height()/2);
 }
 
 void UIManager::updateScannerDisplay() {
@@ -455,7 +497,7 @@ void UIManager::updateScannerDisplay() {
         
         // Clear list area once
         tft.fillRect(1, listY, tft.width() - 2, listH, FLIPPER_BLACK);
-        drawBorder(0, listY, tft.width(), listH, FLIPPER_GRAY);
+        tft.drawRoundRect(0, listY, tft.width(), listH, 6, FLIPPER_GRAY);
         
         WiFiNetwork* networks = wifi.getNetworks();
         
@@ -545,7 +587,7 @@ void UIManager::drawSpammerPage() {
     // Draw SSID list area
     int listY = HEADER_HEIGHT + 5;
     int listH = tft.height() - HEADER_HEIGHT - 42;
-    drawBorder(5, listY, tft.width() - 10, listH, FLIPPER_GRAY);
+    tft.drawRoundRect(5, listY, tft.width() - 10, listH, 6, FLIPPER_GRAY);
     
     tft.setTextColor(FLIPPER_WHITE, FLIPPER_BLACK);
     tft.setTextSize(1);
@@ -658,15 +700,15 @@ void UIManager::drawDeauthPage() {
     
     // Draw stats area
     int statsY = HEADER_HEIGHT + 5;
-    drawBorder(5, statsY, tft.width() - 10, 60, FLIPPER_GRAY);
+    tft.drawRoundRect(5, statsY, tft.width() - 10, 60, 6, FLIPPER_GRAY);
     
     // Draw alert area
     int alertY = statsY + 65;
-    drawBorder(5, alertY, tft.width() - 10, 40, FLIPPER_GRAY);
+    tft.drawRoundRect(5, alertY, tft.width() - 10, 40, 6, FLIPPER_GRAY);
     
     // Draw status area
     int statusY = alertY + 45;
-    drawBorder(5, statusY, tft.width() - 10, tft.height() - statusY - 38, FLIPPER_GRAY);
+    tft.drawRoundRect(5, statusY, tft.width() - 10, tft.height() - statusY - 38, 6, FLIPPER_GRAY);
     
     // Draw start button
     drawButton(tft.width()/2 - 40, tft.height() - 33, 80, 28, "START", FLIPPER_GREEN);
@@ -842,6 +884,413 @@ void UIManager::handleSettingsTouch(MenuState parentState) {
             tft.fillScreen(FLIPPER_BLACK);
             stateChanged = true;
             delay(200);
+        }
+    }
+}
+
+// ==================== BLUETOOTH SCANNER PAGE ====================
+
+void UIManager::drawBTScannerPage() {
+    tft.fillScreen(FLIPPER_BLACK);
+    headerUi("BLE Scanner");
+    
+    // Draw scan button
+    drawButton(tft.width()/2 - 40, tft.height() - 33, 80, 28, 
+               btScannerRunning ? "STOP" : "SCAN", FLIPPER_GREEN, btScannerRunning);
+    
+    backUi("X");
+    
+    if (!btScannerRunning) {
+        tft.setTextColor(FLIPPER_WHITE, FLIPPER_BLACK);
+        tft.setTextDatum(MC_DATUM);
+        tft.drawString("Press SCAN", tft.width()/2, tft.height()/2);
+    }
+}
+
+void UIManager::updateBTScannerDisplay() {
+    static bool displayDrawn = false;
+    static int lastDeviceCount = -1;
+    
+    if (!btScannerRunning) {
+        displayDrawn = false;
+        return;
+    }
+    
+    int currentCount = bt.getDeviceCount();
+    
+    // Prevent flickering
+    if (displayDrawn && currentCount == lastDeviceCount) {
+        return;
+    }
+    
+    if (millis() % 1000 < 100) { // Update once per second
+        int listY = HEADER_HEIGHT + 2;
+        int listH = tft.height() - HEADER_HEIGHT - 37;
+        
+        tft.fillRect(1, listY, tft.width() - 2, listH, FLIPPER_BLACK);
+        drawBorder(0, listY, tft.width(), listH, FLIPPER_GRAY);
+        
+        BTDevice* devices = bt.getDevices();
+        BTStats stats = bt.getStats();
+        
+        // Draw stats header
+        tft.setTextSize(1);
+        tft.setTextColor(FLIPPER_GREEN, FLIPPER_BLACK);
+        tft.setTextDatum(TL_DATUM);
+        
+        char statsStr[40];
+        snprintf(statsStr, 40, "Found: %lu BLE devices", stats.bleDevices);
+        tft.drawString(statsStr, 5, listY + 3);
+        
+        int itemH = 26;
+        int startY = listY + 18;
+        int maxVisible = (listH - 18) / itemH;
+        
+        for (int i = 0; i < min(currentCount, maxVisible); i++) {
+            int itemY = startY + (i * itemH);
+            
+            // Device name
+            tft.setTextColor(FLIPPER_GREEN, FLIPPER_BLACK);
+            tft.setTextDatum(TL_DATUM);
+            
+            String name = String(devices[i].name);
+            if (!devices[i].hasName) name = "<No Name>";
+            if (name.length() > 16) name = name.substring(0, 13) + "...";
+            tft.drawString(name, 5, itemY);
+            
+            // RSSI
+            uint16_t rssiColor = getRssiColor(devices[i].rssi);
+            tft.setTextColor(rssiColor, FLIPPER_BLACK);
+            tft.setTextDatum(TR_DATUM);
+            tft.drawString(String(devices[i].rssi) + "dB", tft.width() - 5, itemY);
+            
+            // Device type
+            tft.setTextColor(FLIPPER_WHITE, FLIPPER_BLACK);
+            tft.setTextDatum(TL_DATUM);
+            tft.drawString(bt.getDeviceTypeName(devices[i].deviceType), 5, itemY + 11);
+            
+            // Address (shortened)
+            tft.setTextColor(FLIPPER_GRAY, FLIPPER_BLACK);
+            tft.setTextDatum(TR_DATUM);
+            String addr = String(devices[i].address);
+            addr = addr.substring(9); // Last 8 chars
+            tft.drawString(addr, tft.width() - 5, itemY + 11);
+            
+            // Divider
+            if (i < min(currentCount, maxVisible) - 1) {
+                tft.drawLine(5, itemY + itemH - 2, tft.width() - 5, itemY + itemH - 2, FLIPPER_GRAY);
+            }
+        }
+        
+        displayDrawn = true;
+        lastDeviceCount = currentCount;
+    }
+}
+
+void UIManager::handleBTScannerTouch() {
+    uint16_t x, y;
+    
+    if (tft.getTouch(&x, &y, 600)) {
+        
+        if (handleBackButton()) {
+            changeState(MENU_BLUETOOTH);
+            delay(200);
+            return;
+        }
+        
+        // Scan button
+        if (x >= tft.width()/2 - 40 && x <= tft.width()/2 + 40 && 
+            y >= tft.height() - 33 && y <= tft.height() - 5) {
+            
+            if (btScannerRunning) {
+                bt.stopScan();
+                btScannerRunning = false;
+                drawButton(tft.width()/2 - 40, tft.height() - 33, 80, 28, "SCAN", FLIPPER_GREEN);
+            } else {
+                int listY = HEADER_HEIGHT + 2;
+                int listH = tft.height() - HEADER_HEIGHT - 37;
+                tft.fillRect(1, listY, tft.width() - 2, listH, FLIPPER_BLACK);
+                tft.setTextColor(FLIPPER_WHITE, FLIPPER_BLACK);
+                tft.setTextDatum(MC_DATUM);
+                tft.drawString("Scanning...", tft.width()/2, tft.height()/2);
+                
+                bt.startScan();
+                btScannerRunning = true;
+                drawButton(tft.width()/2 - 40, tft.height() - 33, 80, 28, "STOP", FLIPPER_GREEN, true);
+            }
+            
+            delay(200);
+            return;
+        }
+    }
+}
+
+// ==================== BLUETOOTH SPAMMER PAGE ====================
+
+void UIManager::drawBTSpammerPage() {
+    tft.fillScreen(FLIPPER_BLACK);
+    headerUi("BLE Spammer");
+    
+    int listY = HEADER_HEIGHT + 5;
+    int listH = tft.height() - HEADER_HEIGHT - 42;
+    drawBorder(5, listY, tft.width() - 10, listH, FLIPPER_GRAY);
+    
+    tft.setTextColor(FLIPPER_WHITE, FLIPPER_BLACK);
+    tft.setTextSize(1);
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString("Spamming Devices:", tft.width()/2, listY + 8);
+    
+    drawButton(tft.width()/2 - 40, tft.height() - 33, 80, 28, "START", FLIPPER_GREEN);
+    
+    backUi("X");
+}
+
+void UIManager::updateBTSpammerDisplay() {
+    static uint32_t lastUpdate = 0;
+    
+    if (millis() - lastUpdate < 500) return;
+    lastUpdate = millis();
+    
+    int listY = HEADER_HEIGHT + 5;
+    int listH = tft.height() - HEADER_HEIGHT - 42;
+    
+    tft.fillRect(6, listY + 18, tft.width() - 12, listH - 20, FLIPPER_BLACK);
+    
+    const BTSpamData* spamData = bt.getSpamData();
+    tft.setTextSize(1);
+    tft.setTextDatum(TL_DATUM);
+    
+    int startY = listY + 22;
+    int itemH = 12;
+    
+    if (btSpammerRunning) {
+        static int highlightIndex = 0;
+        
+        for (int i = 0; i < 10; i++) {
+            int itemY = startY + (i * itemH);
+            
+            if (i == highlightIndex) {
+                tft.setTextColor(FLIPPER_GREEN, FLIPPER_BLACK);
+                tft.drawString(">", 10, itemY);
+            } else {
+                tft.setTextColor(FLIPPER_GRAY, FLIPPER_BLACK);
+            }
+            
+            String name = String(spamData[i].name);
+            if (name.length() > 20) name = name.substring(0, 17) + "...";
+            tft.drawString(name, 20, itemY);
+        }
+        
+        highlightIndex = (highlightIndex + 1) % 10;
+        
+    } else {
+        tft.setTextColor(FLIPPER_GRAY, FLIPPER_BLACK);
+        
+        for (int i = 0; i < 10; i++) {
+            int itemY = startY + (i * itemH);
+            String name = String(spamData[i].name);
+            if (name.length() > 22) name = name.substring(0, 19) + "...";
+            tft.drawString(name, 15, itemY);
+        }
+    }
+}
+
+void UIManager::handleBTSpammerTouch() {
+    uint16_t x, y;
+    
+    if (tft.getTouch(&x, &y, 600)) {
+        
+        if (handleBackButton()) {
+            changeState(MENU_BLUETOOTH);
+            delay(200);
+            return;
+        }
+        
+        if (x >= tft.width()/2 - 40 && x <= tft.width()/2 + 40 && 
+            y >= tft.height() - 33 && y <= tft.height() - 5) {
+            
+            if (btSpammerRunning) {
+                bt.stopSpammer();
+                btSpammerRunning = false;
+                drawButton(tft.width()/2 - 40, tft.height() - 33, 80, 28, "START", FLIPPER_GREEN);
+            } else {
+                bt.startSpammer();
+                btSpammerRunning = true;
+                drawButton(tft.width()/2 - 40, tft.height() - 33, 80, 28, "STOP", FLIPPER_GREEN, true);
+            }
+            
+            delay(200);
+            return;
+        }
+    }
+}
+
+// ==================== TRACKER DETECTOR PAGE ====================
+
+void UIManager::drawBTSkimmerPage() {
+    tft.fillScreen(FLIPPER_BLACK);
+    headerUi("Tracker Detect");
+    
+    drawButton(tft.width()/2 - 40, tft.height() - 33, 80, 28, "START", FLIPPER_GREEN);
+    backUi("X");
+    
+    tft.setTextColor(FLIPPER_WHITE, FLIPPER_BLACK);
+    tft.setTextSize(1);
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString("Detect AirTags", tft.width()/2, tft.height()/2 - 10);
+    tft.drawString("& Tile Trackers", tft.width()/2, tft.height()/2 + 5);
+}
+
+void UIManager::updateBTSkimmerDisplay() {
+    if (!btSkimmerRunning) return;
+    
+    static uint32_t lastUpdate = 0;
+    if (millis() - lastUpdate < 1000) return;
+    lastUpdate = millis();
+    
+    int listY = HEADER_HEIGHT + 2;
+    int listH = tft.height() - HEADER_HEIGHT - 37;
+    
+    tft.fillRect(1, listY, tft.width() - 2, listH, FLIPPER_BLACK);
+    drawBorder(0, listY, tft.width(), listH, FLIPPER_GRAY);
+    
+    int trackerCount = bt.getTrackerCount();
+    BTDevice* trackers = bt.getTrackers();
+    
+    tft.setTextSize(1);
+    tft.setTextDatum(MC_DATUM);
+    
+    if (trackerCount == 0) {
+        tft.setTextColor(FLIPPER_GREEN, FLIPPER_BLACK);
+        tft.drawString("No trackers", tft.width()/2, listY + 20);
+        tft.drawString("detected", tft.width()/2, listY + 35);
+    } else {
+        tft.setTextColor(FLIPPER_RED, FLIPPER_BLACK);
+        tft.setTextSize(2);
+        tft.drawString("FOUND!", tft.width()/2, listY + 15);
+        
+        tft.setTextSize(1);
+        tft.setTextColor(FLIPPER_WHITE, FLIPPER_BLACK);
+        
+        char msg[30];
+        snprintf(msg, 30, "%d tracker(s) nearby", trackerCount);
+        tft.drawString(msg, tft.width()/2, listY + 35);
+        
+        // List trackers
+        tft.setTextDatum(TL_DATUM);
+        int startY = listY + 50;
+        for (int i = 0; i < min(trackerCount, 3); i++) {
+            tft.setTextColor(FLIPPER_ORANGE, FLIPPER_BLACK);
+            tft.drawString(trackers[i].name, 10, startY + (i * 15));
+        }
+    }
+}
+
+void UIManager::handleBTSkimmerTouch() {
+    uint16_t x, y;
+    
+    if (tft.getTouch(&x, &y, 600)) {
+        
+        if (handleBackButton()) {
+            changeState(MENU_BLUETOOTH);
+            delay(200);
+            return;
+        }
+        
+        if (x >= tft.width()/2 - 40 && x <= tft.width()/2 + 40 && 
+            y >= tft.height() - 33 && y <= tft.height() - 5) {
+            
+            if (btSkimmerRunning) {
+                bt.stopSkimmer();
+                btSkimmerRunning = false;
+                drawButton(tft.width()/2 - 40, tft.height() - 33, 80, 28, "START", FLIPPER_GREEN);
+            } else {
+                bt.startSkimmer();
+                btSkimmerRunning = true;
+                drawButton(tft.width()/2 - 40, tft.height() - 33, 80, 28, "STOP", FLIPPER_GREEN, true);
+            }
+            
+            delay(200);
+            return;
+        }
+    }
+}
+
+// ==================== RSSI MONITOR PAGE ====================
+
+void UIManager::drawBTRSSIPage() {
+    tft.fillScreen(FLIPPER_BLACK);
+    headerUi("RSSI Monitor");
+    
+    int graphY = HEADER_HEIGHT + 5;
+    int graphH = tft.height() - HEADER_HEIGHT - 40;
+    drawBorder(5, graphY, tft.width() - 10, graphH, FLIPPER_GRAY);
+    
+    // Y-axis labels
+    tft.setTextColor(FLIPPER_GREEN, FLIPPER_BLACK);
+    tft.setTextSize(1);
+    tft.setTextDatum(MR_DATUM);
+    
+    tft.drawString("-30", 22, graphY + 10);
+    tft.drawString("-60", 22, graphY + graphH / 2);
+    tft.drawString("-90", 22, graphY + graphH - 10);
+    
+    backUi("X");
+}
+
+void UIManager::updateBTRSSIDisplay() {
+    if (!shouldUpdateDisplay()) return;
+    
+    int graphY = HEADER_HEIGHT + 5;
+    int graphH = tft.height() - HEADER_HEIGHT - 40;
+    int graphStartX = 28;
+    int graphWidth = tft.width() - graphStartX - 15;
+    
+    // Get RSSI history
+    int8_t rssiData[50];
+    bt.getRSSIHistory(rssiData, 50);
+    
+    // Clear graph area
+    tft.fillRect(graphStartX, graphY + 2, graphWidth, graphH - 4, FLIPPER_BLACK);
+    
+    // Draw RSSI line
+    int lastY = -1;
+    for (int i = 0; i < min(graphWidth, 50); i++) {
+        int8_t rssi = rssiData[i];
+        if (rssi > -30) rssi = -30;
+        if (rssi < -90) rssi = -90;
+        
+        int y = map(rssi, -30, -90, graphY + 5, graphY + graphH - 5);
+        
+        uint16_t color = getRssiColor(rssi);
+        
+        if (lastY != -1) {
+            tft.drawLine(graphStartX + i - 1, lastY, graphStartX + i, y, color);
+        }
+        tft.drawPixel(graphStartX + i, y, color);
+        lastY = y;
+    }
+    
+    // Display strongest RSSI
+    int8_t strongest = bt.getStrongestRSSI();
+    tft.fillRect(5, tft.height() - 32, tft.width() - 10, 27, FLIPPER_BLACK);
+    tft.setTextColor(FLIPPER_GREEN, FLIPPER_BLACK);
+    tft.setTextSize(1);
+    tft.setTextDatum(MC_DATUM);
+    
+    char msg[30];
+    snprintf(msg, 30, "Strongest: %d dBm", strongest);
+    tft.drawString(msg, tft.width()/2, tft.height() - 19);
+}
+
+void UIManager::handleBTRSSITouch() {
+    uint16_t x, y;
+    
+    if (tft.getTouch(&x, &y, 600)) {
+        if (handleBackButton()) {
+            changeState(MENU_BLUETOOTH);
+            delay(200);
+            return;
         }
     }
 }
