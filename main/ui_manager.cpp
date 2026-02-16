@@ -3,8 +3,8 @@
 // Menu Definitions
 MenuItem mainItems[] = {
     { "WiFi 2.4GHz", MENU_WIFI },
-    { "Bluetooth", MENU_BLUETOOTH },
-    { "RFID / NFC", MENU_RFID },
+    // { "Bluetooth", MENU_BLUETOOTH },
+    // { "RFID / NFC", MENU_RFID },
     { "Settings", MENU_SETTINGS }
 };
 const int MAIN_COUNT = sizeof(mainItems) / sizeof(MenuItem);
@@ -17,16 +17,16 @@ MenuItem wifiItems[] = {
 };
 const int WIFI_COUNT = sizeof(wifiItems) / sizeof(MenuItem);
 
-MenuItem btItems[] = {
-    { "BT Sniffer", PAGE_BT_TEST }
-};
-const int BT_COUNT = sizeof(btItems) / sizeof(MenuItem);
+// MenuItem btItems[] = {
+//     { "BT Sniffer", PAGE_BT_TEST }
+// };
+// const int BT_COUNT = sizeof(btItems) / sizeof(MenuItem);
 
-MenuItem rfidItems[] = {
-    { "Read Card", PAGE_RFID_SCAN },
-    { "Emulate Card", PAGE_RFID_EMIT }
-};
-const int RFID_COUNT = sizeof(rfidItems) / sizeof(MenuItem);
+// MenuItem rfidItems[] = {
+//     { "Read Card", PAGE_RFID_SCAN },
+//     { "Emulate Card", PAGE_RFID_EMIT }
+// };
+// const int RFID_COUNT = sizeof(rfidItems) / sizeof(MenuItem);
 
 MenuItem settingsItems[] = {
     { "Landscape Mode", MENU_MAIN },
@@ -70,21 +70,21 @@ void UIManager::update() {
             handleListTouch(wifiItems, WIFI_COUNT, MENU_MAIN);
             break;
 
-        case MENU_BLUETOOTH:
-            if (stateChanged) { 
-                drawListMenu("Bluetooth", btItems, BT_COUNT, MENU_MAIN); 
-                stateChanged = false; 
-            }
-            handleListTouch(btItems, BT_COUNT, MENU_MAIN);
-            break;
+        // case MENU_BLUETOOTH:
+        //     if (stateChanged) { 
+        //         drawListMenu("Bluetooth", btItems, BT_COUNT, MENU_MAIN); 
+        //         stateChanged = false; 
+        //     }
+        //     handleListTouch(btItems, BT_COUNT, MENU_MAIN);
+        //     break;
 
-        case MENU_RFID:
-            if (stateChanged) { 
-                drawListMenu("RFID / NFC", rfidItems, RFID_COUNT, MENU_MAIN); 
-                stateChanged = false; 
-            }
-            handleListTouch(rfidItems, RFID_COUNT, MENU_MAIN);
-            break;
+        // case MENU_RFID:
+        //     if (stateChanged) { 
+        //         drawListMenu("RFID / NFC", rfidItems, RFID_COUNT, MENU_MAIN); 
+        //         stateChanged = false; 
+        //     }
+        //     handleListTouch(rfidItems, RFID_COUNT, MENU_MAIN);
+        //     break;
 
         case MENU_SETTINGS:
             if (stateChanged) { 
@@ -141,29 +141,29 @@ void UIManager::update() {
             handleListTouch(NULL, 0, MENU_WIFI);
             break;
         
-        case PAGE_BT_TEST:
-            if (stateChanged) { 
-                drawPlaceholderPage("BT Active", MENU_BLUETOOTH); 
-                stateChanged = false; 
-            }
-            handleListTouch(NULL, 0, MENU_BLUETOOTH);
-            break;
+        // case PAGE_BT_TEST:
+        //     if (stateChanged) { 
+        //         drawPlaceholderPage("BT Active", MENU_BLUETOOTH); 
+        //         stateChanged = false; 
+        //     }
+        //     handleListTouch(NULL, 0, MENU_BLUETOOTH);
+        //     break;
 
-        case PAGE_RFID_SCAN:
-            if (stateChanged) { 
-                drawPlaceholderPage("Reading...", MENU_RFID); 
-                stateChanged = false; 
-            }
-            handleListTouch(NULL, 0, MENU_RFID);
-            break;
+        // case PAGE_RFID_SCAN:
+        //     if (stateChanged) { 
+        //         drawPlaceholderPage("Reading...", MENU_RFID); 
+        //         stateChanged = false; 
+        //     }
+        //     handleListTouch(NULL, 0, MENU_RFID);
+        //     break;
         
-        case PAGE_RFID_EMIT:
-            if (stateChanged) { 
-                drawPlaceholderPage("Emulating...", MENU_RFID); 
-                stateChanged = false; 
-            }
-            handleListTouch(NULL, 0, MENU_RFID);
-            break;
+        // case PAGE_RFID_EMIT:
+        //     if (stateChanged) { 
+        //         drawPlaceholderPage("Emulating...", MENU_RFID); 
+        //         stateChanged = false; 
+        //     }
+        //     handleListTouch(NULL, 0, MENU_RFID);
+        //     break;
     }
 }
 
@@ -378,6 +378,7 @@ void UIManager::handleWaterfallTouch() {
         // Channel decrease
         if (x >= tft.width() - 70 && x <= tft.width() - 40 && y >= tft.height() - 33 && y <= tft.height() - 5) {
             int ch = wifi.getChannel();
+            if (ch == 1) wifi.setChannel(13);
             if (ch > 1) wifi.setChannel(ch - 1);
             delay(200);
             return;
@@ -386,6 +387,7 @@ void UIManager::handleWaterfallTouch() {
         // Channel increase
         if (x >= tft.width() - 35 && x <= tft.width() - 5 && y >= tft.height() - 33 && y <= tft.height() - 5) {
             int ch = wifi.getChannel();
+            if (ch == 13) wifi.setChannel(1);
             if (ch < 13) wifi.setChannel(ch + 1);
             delay(200);
             return;

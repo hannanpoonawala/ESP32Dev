@@ -25,8 +25,8 @@
 enum MenuState {
     MENU_MAIN,
     MENU_WIFI,
-    MENU_BLUETOOTH,
-    MENU_RFID,
+    // MENU_BLUETOOTH,
+    // MENU_RFID,
     MENU_SETTINGS,
     
     // WiFi Pages
@@ -36,10 +36,10 @@ enum MenuState {
     PAGE_DEAUTH,
     
     // Other Pages
-    PAGE_PORTAL,
-    PAGE_BT_TEST,
-    PAGE_RFID_SCAN,
-    PAGE_RFID_EMIT
+    PAGE_PORTAL
+    // PAGE_BT_TEST,
+    // PAGE_RFID_SCAN,
+    // PAGE_RFID_EMIT
 };
 
 struct MenuItem {

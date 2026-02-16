@@ -4,6 +4,11 @@
 WiFiHandler wifiHandler;
 UIManager ui(wifiHandler);
 
+const int pwmPin = 21;
+const int pwmChannel = 0;
+const int pwmFreq = 5000;
+const int pwmResolution = 8;  // 8-bit resolution (0–255)
+
 void setup() {
     Serial.begin(115200);
     
